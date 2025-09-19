@@ -1,0 +1,33 @@
+import UIKit
+
+let firstName = "Aisana"
+let lastName = "Orazkulova"
+let birthYear = 2006
+let isStudent = true
+let height = 1.7
+let currenrYear = 2025
+let age = currenrYear - birthYear
+var student: String
+
+let hobby = "playing dombra"
+let numberOfHobbies = 8
+let favouriteNumber = 4
+let isHobbyCreative = true
+let favMeal = "manty"
+var creativeH: String
+
+if isStudent {
+    student = "student"
+} else{
+    student = "not student"
+}
+
+if isHobbyCreative {
+    creativeH = "creative"
+} else{
+    creativeH = "not creative"
+}
+
+let lifeStory = "My name is \(firstName) \(lastName). I am \(age) years old, born in \(birthYear). I am currently a \(student). I enjoy \(hobby), which is a \(creativeH) hobby. I have \(numberOfHobbies) hobbies in total, and my favourite number is \(favouriteNumber). I like to eat \(favMeal). My height is \(height)."
+
+print (lifeStory)
