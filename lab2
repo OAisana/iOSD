@@ -54,11 +54,9 @@ func kToC(k: Double) -> Double{
 func kToF(k: Double) -> Double{
     return (k - 273.15) * 9/5 + 32
 }
-print("write: ")
-let inputN = readLine()
-if let input = inputN, let t = Double(input){
-    if let u = readLine(){
-        switch u.lowercased(){
+
+func changetemp(t: Double, unit: String){
+        switch unit.lowercased(){
         case "c":
             print("Celsius: \(t) C")
             print("Fahrenhei: \(cToF(c: t)) F")
@@ -73,9 +71,12 @@ if let input = inputN, let t = Double(input){
             print("Kelvin: \(t) K")
         default:
             print("wrong unit, try again.")
-        }
+        
     }
 }
+
+changetemp(t: 23, unit: "c")
+
 """
 
 
@@ -181,7 +182,6 @@ if let maxScore = scores.max(), let minScore = scores.min() {
     print("Максимум: \(maxScore)")
     print("Минимум: \(minScore)\n")
     
-    // Печатаем каждого студента
     for (name, score) in students {
         let status = Double(score) >= average ? "выше среднего" : "ниже среднего"
         print("\(name): \(score) (\(status))")
