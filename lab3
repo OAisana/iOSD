@@ -1,0 +1,309 @@
+import UIKit
+
+struct Product{
+    enum Category{
+        case food    
+        case clothing
+        case books
+        case electronics
+    }
+    let id: String
+    var name: String
+    var price: Double
+    var category: Category
+    var description: String
+    
+    var displayPrice: String{
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale.current
+        return formatter.string(from: NSNumber(value : price)) ?? String(format:  "$%.2f", price)
+    }
+    
+    init?(id: String = UUID().uuidString,
+          name: String,
+          price: Double,
+          category: Category,
+          description: String = ""){
+        guard price > 0 else{
+            return nil
+        }
+        self.id = id
+        self.name = name
+        self.price = price
+        self.category = category
+        self.description = description
+    }
+}
+
+struct CartItem{
+    var product: Product
+    var quantity: Int
+    
+    var subtotal: Double{
+        return product.price * Double(quantity)
+    }
+    mutating func updateQuantity(_ newQuantity: Int){
+        guard newQuantity > 0 else{
+            print("must be > 0.")
+            return
+        }
+        quantity = newQuantity
+    }
+    mutating func increaseQuantity(by amount: Int){
+        guard amount > 0 else{
+            print("must be > 0.")
+            return
+        }
+        quantity += amount
+    }
+}
+
+class ShoppingCart{
+    private(set) var items: [CartItem]
+    var discountCode: String?
+    
+    init(){
+        self.items = []
+        self.discountCode = nil
+    }
+    
+    func addItem(product: Product, quantity: Int = 1) {
+            guard quantity > 0 else {
+                print("invalid quantity")
+                return
+            }
+        if let idx = items.firstIndex(where: {$0.product.id == product.id}) {
+                var existing = items[idx]
+                existing.increaseQuantity(by: quantity)
+                items[idx] = existing
+            } else {
+                let newItem = CartItem(product: product, quantity: quantity)
+                items.append(newItem)
+            }
+    }
+    func removeItem(productId: String){
+        if let idx = items.firstIndex(where: {$0.product.id == productId}){
+            items.remove(at: idx)
+        } else{
+            print("item not found")
+        }
+    }
+    func updateItemQuantity(productId: String, quantity: Int){
+        guard quantity >= 0 else {
+            print("must by > 0")
+            return
+        }
+        if let idx = items.firstIndex(where: {$0.product.id == productId}){
+            if quantity == 0{
+                items.remove(at: idx)
+            }else{
+                var item = items[idx]
+                item.updateQuantity(quantity)
+                items[idx] = item
+            }
+        } else{
+            print("not found.")
+        }
+    }
+    func clearCart(){
+        items.removeAll()
+        discountCode = nil
+    }
+    var subtotal: Double{
+        return items.reduce(0) {$0 + $1.subtotal}
+    }
+    var discountAmount: Double {
+        guard let code = discountCode else{ return 0.0}
+        let upper = code.uppercased()
+        switch upper{
+        case "SAVE10":
+            return subtotal * 0.1
+        case "SAVE20":
+            return subtotal * 0.2
+        case "SAVE30":
+            return subtotal * 0.3
+        case "HALF":
+            return subtotal / 2
+        default:
+            return 0.0
+        }
+    }
+    var total: Double{
+        let raw = subtotal - discountAmount
+        return raw >= 0 ? raw : 0.0
+    }
+    var itemCount: Int{
+        return items.reduce(0) {$0 + $1.quantity}
+    }
+    var isEmpty: Bool{
+        return items.isEmpty
+    }
+}
+
+struct Address{
+    var street: String
+    var city: String
+    var zipCode: String
+    var country: String
+    
+    var formattedAddress: String{
+        return "\(street)\n\(city), \(zipCode)\n\(country)"
+    }
+}
+
+struct Order{
+    let orderId: String
+    let items: [CartItem]
+    let subtotal : Double
+    let discountAmount: Double
+    let total: Double
+    let timestamp: Date
+    let shippingAddress: Address
+    
+    init(from cart: ShoppingCart, shippingAddress: Address){
+        self.orderId = UUID().uuidString
+        self.items = cart.items
+        self.subtotal = cart.subtotal
+        self.discountAmount = cart.discountAmount
+        self.total = cart.total
+        self.timestamp = Date()
+        self.shippingAddress = shippingAddress
+    }
+    
+    var itemCount: Int{
+        return items.reduce(0) { $0 + $1.quantity }
+    }
+}
+
+class User{
+    let userId: String
+    let name: String
+    let email: String
+    private(set) var orderHistory: [Order] = []
+    
+    init(userId: String = UUID().uuidString, name: String, email: String){
+        self.userId = userId
+        self.name = name
+        self.email = email
+    }
+    
+    func placeOrder(_ order: Order){
+        orderHistory.append(order)
+    }
+    var totalSpent: Double{
+        return orderHistory.reduce(0) { $0 + $1.total }
+    }
+}
+struct Tests {
+    static func runAll() {
+        print("=== TESTS START ===")
+        guard let laptop = Product(name: "Laptop", price: 1299.99, category: .electronics, description: "15-inch laptop"),
+              let book = Product(name: "Swift Programming Book", price: 39.90, category: .books, description: "Learn Swift"),
+              let headphones = Product(name: "Headphones", price: 89.50, category: .electronics, description: "Noise-cancelling") else {
+            print("Failed to create products (price validation).")
+            return
+        }
+        
+        print("Product prices:")
+        print("\(laptop.name): \(laptop.displayPrice)")
+        print("\(book.name): \(book.displayPrice)")
+        print("\(headphones.name): \(headphones.displayPrice)")
+        
+        let cart = ShoppingCart()
+        cart.addItem(product: laptop, quantity: 1)
+        cart.addItem(product: book, quantity: 2)
+        print("\nAdded laptop x1 and book x2.")
+        print("Cart itemCount: \(cart.itemCount)") // should be 3
+        print("Cart subtotal: \(String(format: "%.2f", cart.subtotal))")
+        
+        cart.addItem(product: laptop, quantity: 1)
+        print("\nAdded laptop again x1.")
+        if let idx = cart.items.firstIndex(where: { $0.product.id == laptop.id }) {
+            print("Laptop quantity now: \(cart.items[idx].quantity)") // should be 2
+        } else {
+            print("Laptop not found in cart.")
+        }
+        
+        print("Cart subtotal: \(String(format: "%.2f", cart.subtotal))")
+        print("Cart itemCount: \(cart.itemCount)")
+        
+        cart.discountCode = "SAVE10"
+        print("\nApplied discount code SAVE10")
+        print("Discount amount: \(String(format: "%.2f", cart.discountAmount))")
+        print("Total with discount: \(String(format: "%.2f", cart.total))")
+        
+        cart.removeItem(productId: book.id)
+        print("\nRemoved the book product.")
+        print("Cart subtotal now: \(String(format: "%.2f", cart.subtotal))")
+        print("Cart itemCount now: \(cart.itemCount)")
+        
+        func modifyCart(_ someCart: ShoppingCart) {
+            someCart.addItem(product: headphones, quantity: 1)
+            print("Inside modifyCart: added headphones x1")
+        }
+        modifyCart(cart)
+        print("\nAfter modifyCart call (reference behavior):")
+        print("Cart itemCount: \(cart.itemCount)") // original cart modified
+        if let idxH = cart.items.firstIndex(where: { $0.product.id == headphones.id }) {
+            print("Headphones quantity: \(cart.items[idxH].quantity)")
+        }
+        
+        if let laptopIndex = cart.items.firstIndex(where: { $0.product.id == laptop.id }) {
+            var item1 = cart.items[laptopIndex] // value copy
+            var item2 = item1                    // another copy
+            item2.updateQuantity(5)
+            print("\nValue type demo (CartItem is struct):")
+            print("item1 quantity (original copy): \(item1.quantity)") // should remain as before (e.g., 2)
+            print("item2 quantity (updated): \(item2.quantity)")      // 5
+            print("Cart's stored item quantity: \(cart.items[laptopIndex].quantity)") // unchanged in cart
+        }
+        
+        let address = Address(street: "123 Main St", city: "Almaty", zipCode: "050000", country: "Kazakhstan")
+        let order = Order(from: cart, shippingAddress: address)
+        print("\nOrder created:")
+        print("Order ID: \(order.orderId)")
+        print("Order itemCount: \(order.itemCount)")
+        print("Order subtotal: \(String(format: "%.2f", order.subtotal))")
+        print("Order total: \(String(format: "%.2f", order.total))")
+        print("Order shipping address:\n\(order.shippingAddress.formattedAddress)")
+        
+        cart.clearCart()
+        print("\nAfter clearing cart:")
+        print("Cart itemCount: \(cart.itemCount)") // should be 0
+        print("Order itemCount (snapshot): \(order.itemCount)") // should remain same as before
+        
+        let user = User(name: "Aisana", email: "aisana@example.com")
+        user.placeOrder(order)
+        print("\nUser's order history count: \(user.orderHistory.count)")
+        print("User total spent: \(String(format: "%.2f", user.totalSpent))")
+        
+        print("\n=== TESTS END ===")
+    }
+}
+Tests.runAll()
+
+
+/*
+ This project implements a simple Shopping Cart system in Swift to demonstrate the difference
+ between structs (value types) and classes (reference types).
+
+ Main choices
+ - Product: struct — pure data, no identity required; uses failable initializer to validate price.
+ - CartItem: struct — encapsulates a Product and quantity; mutating methods update internal state.
+ - ShoppingCart: class — shared, mutable entity with identity; used across the app and modified in place.
+ - Order: struct — immutable snapshot (all properties are `let`) taken at checkout time.
+ - Address: struct — simple data container.
+ - User: class (bonus) — has identity and order history (mutable array).
+
+ How to run
+ Paste the whole file into an Xcode Playground and run. `Tests.runAll()` executes demonstration scenarios.
+
+ Key points demonstrated
+ - Value semantics: Copies of `CartItem`/`Product` do not affect originals.
+ - Reference semantics: Passing `ShoppingCart` to a function and modifying it changes the original instance.
+ - Mutating methods in structs.
+ - Encapsulation: `items` in ShoppingCart is `private(set)`.
+ - Failable initializer used to validate Product.price.
+
+ */
